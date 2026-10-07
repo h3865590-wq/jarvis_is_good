@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>任務清單 📝</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      color: #fff;
+      padding: 2rem 1rem;
+    }
+    .container { width: 100%; max-width: 600px; }
+    h1 {
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 0.3rem;
+      background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: #7fd8ff;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input[type="text"]::placeholder { color: #7a9cbf; }
+    input[type="text"]:focus { border-color: #00d2ff; }
+    button.add-btn {
+      padding: 0.75rem 1.2rem;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button.add-btn:hover { opacity: 0.85; }
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 0.3rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.07);
+      color: #aac8f0;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: rgba(0,210,255,0.2);
+      border-color: #00d2ff;
+      color: #fff;
+    }
+    ul { list-style: none; }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.6rem;
+      transition: opacity 0.2s;
+    }
+    li.done { opacity: 0.5; }
+    li.done .task-text { text-decoration: line-through; color: #7a9cbf; }
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: #00d2ff; cursor: pointer; flex-shrink: 0; }
+    .task-text { flex: 1; font-size: 0.97rem; word-break: break-all; }
+    .del-btn {
+      background: none;
+      border: none;
+      color: #ff6b6b;
+      font-size: 1.1rem;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .del-btn:hover { opacity: 1; }
+    .empty {
+      text-align: center;
+      color: #7a9cbf;
+      padding: 2rem 0;
+      font-size: 0.95rem;
+    }
+    .stats {
+      text-align: center;
+      color: #7fd8ff;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 2rem;
+      color: #7fd8ff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .back-link:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 任務清單</h1>
+    <p class="subtitle">新增、完成、管理你的每日任務</p>
+
+    <div class="input-row">
+      <input type="text" id="taskInput" placeholder="輸入新任務..." />
+      <button class="add-btn" onclick="addTask()">新增</button>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
+      <button class="filter-btn" onclick="setFilter('active', this)">未完成</button>
+      <button class="filter-btn" onclick="setFilter('done', this)">已完成</button>
+    </div>
+
+    <p class="stats" id="stats"></p>
+    <ul id="taskList"></ul>
+    <p class="empty" id="empty" style="display:none">目前沒有任務 🎉</p>
+
+    <a href="index.html" class="back-link">← 返回首頁</a>
+  </div>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem('jarvis_tasks') || '[]');
+    let filter = 'all';
+
+    function save() { localStorage.setItem('jarvis_tasks', JSON.stringify(tasks)); }
+
+    function render() {
+      const list = document.getElementById('taskList');
+      const empty = document.getElementById('empty');
+      const stats = document.getElementById('stats');
+      list.innerHTML = '';
+      const visible = tasks.filter(t =>
+        filter === 'all' ? true : filter === 'done' ? t.done : !t.done
+      );
+      if (visible.length === 0) {
+        empty.style.display = 'block';
+      } else {
+        empty.style.display = 'none';
+        visible.forEach((t, idx) => {
+          const realIdx = tasks.indexOf(t);
+          const li = document.createElement('li');
+          if (t.done) li.classList.add('done');
+          li.innerHTML = `
+            <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggle(${realIdx})"/>
+            <span class="task-text">${t.text}</span>
+            <button class="del-btn" onclick="remove(${realIdx})">🗑</button>
+          `;
+          list.appendChild(li);
+        });
+      }
+      const done = tasks.filter(t => t.done).length;
+      stats.textContent = `共 ${tasks.length} 項，已完成 ${done} 項`;
+    }
+
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (!text) return;
+      tasks.unshift({ text, done: false });
+      input.value = '';
+      save(); render();
+    }
+
+    function toggle(idx) {
+      tasks[idx].done = !tasks[idx].done;
+      save(); render();
+    }
+
+    function remove(idx) {
+      tasks.splice(idx, 1);
+      save(); render();
+    }
+
+    function setFilter(f, btn) {
+      filter = f;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    }
+
+    document.getElementById('taskInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTask();
+    });
+
+    render();
+  </script>
+</body>
+</html>
